@@ -1,8 +1,10 @@
 import json
 import pandas as pd
 
+from db_interface import DBInterface
 
-class DBServerEmulator:
+
+class DBServerEmulator(DBInterface):
     def __init__(self):
         self.database = pd.read_parquet('data.prq')
         self.companies_info = pd.read_parquet('meta.prq')
@@ -23,3 +25,6 @@ class DBServerEmulator:
 
     def get_data_by(self, company_filter):
         return self.database[self.database.companyName.isin(company_filter)]
+
+    def get_companies_info(self):
+        return self.companies_info
