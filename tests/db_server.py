@@ -1,9 +1,13 @@
+import json
 import pandas as pd
+
 
 class DBServerEmulator:
     def __init__(self):
         self.database = pd.read_parquet('data.prq')
         self.companies_info = pd.read_parquet('meta.prq')
+        with open('snapshots/index.json') as f_index:
+            self.index = json.load(f_index)
 
     def get_company_filter(self, company):
         if company[:5] == 'joint':
