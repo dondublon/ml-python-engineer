@@ -1,6 +1,7 @@
 from db_interface import DBInterface
 # It requires additional work to hide this from server, I guess I can skip it.
 from tests.db_server import DBServerEmulator
+from companies import CompaniesManager
 
 
 def get_db_server() -> DBInterface:
@@ -11,4 +12,4 @@ def get_db_server() -> DBInterface:
 class Worker:
     def __init__(self):
         self.db_server = get_db_server()
-        self.companies_info = self.db_server.get_companies_info()
+        self.companies = CompaniesManager(self.db_server)

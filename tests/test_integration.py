@@ -1,5 +1,4 @@
 from unittest import TestCase
-from .db_server import DBServerEmulator
 from worker import Worker
 
 class Test1(TestCase):
@@ -8,4 +7,5 @@ class Test1(TestCase):
         self.worker = Worker()
 
     def test_1(self):
-        pass
+        companies = self.worker.companies.get_companies(True)
+        print(companies)
