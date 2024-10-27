@@ -1,6 +1,8 @@
 import os
 import json
 
+import pandas as pd
+
 from db_interface import DBInterface
 # It requires additional work to hide this from server, I guess I can skip it.
 from tests.db_server import DBServerEmulator
@@ -42,10 +44,14 @@ class Worker:
 
     def make_snapshot_pure_company(self, company_name):
         last_updated_date = self.index.last_updated_date(company_name)
-        data = self.db_server.get_data(company_name, last_updated_date)
-        if not data.empty:
-            max_data_date = data.last_updated_date.max()
-            if os.path.exists(f'snapshots/{company_name}.prq'):
-                # TODO add to the previous snapshot
-                pass
+        new_data = self.db_server.get_data(company_name, last_updated_date)
+        if not new_data.empty:
+            filename = f'snapshots/{company_name}.prq'
+            max_data_date = new_data.last_updated_date.max()
+            if os.path.exists(filename):
+                prev_data = pd.read_parquet(filename)
+                new_result_data = pd.concat([prev_data, new_data], axis=0)
+                new_result_data.to_parquet(filename)
+            else:
+                new_data.to_parquet(filename)
             self.index.set_last_updated_date(company_name, max_data_date)
