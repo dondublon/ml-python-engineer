@@ -1,5 +1,9 @@
 from unittest import TestCase
 from worker import Worker
+import random
+
+
+random.seed(123)
 
 class Test1(TestCase):
     def setUp(self):
@@ -7,5 +11,6 @@ class Test1(TestCase):
         self.worker = Worker()
 
     def test_1(self):
-        companies = self.worker.companies.get_companies(True)
-        print(companies)
+        companies = ['ktkzxrffnd', 'grnescfhiv', 'bsjhgjllri']
+        for company in companies:
+            self.worker.make_snapshot(company)

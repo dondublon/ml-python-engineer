@@ -5,7 +5,6 @@ class CompaniesManager:
     def get_companies(self, include_jointgs: bool):
         companies_only = self.data.companyName
         if include_jointgs:
-            # TODO
             jointgs = [name for name in self.data.columns.to_list() if name.startswith('joint')]
             companies = list(companies_only) + jointgs
         else:
