@@ -10,3 +10,7 @@ class CompaniesManager:
         else:
             companies = companies_only
         return companies
+
+    def get_jointg_companies(self, jointg_name):
+        result = self.data.companyName[self.data[jointg_name]=='true']
+        return result.to_list()

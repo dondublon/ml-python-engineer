@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import timedelta, datetime, timezone
 
 import pandas as pd
 
@@ -8,6 +9,8 @@ from db_interface import DBInterface
 from tests.db_server import DBServerEmulator
 from companies import CompaniesManager
 
+#FRESH_DATA_THRESHOLD = timedelta(days=1)
+SERVICE_LAG = timedelta(minutes=1)
 
 def get_db_server() -> DBInterface:
     db_server = DBServerEmulator()
@@ -27,7 +30,16 @@ class Index:
     def set_last_updated_date(self, company_name, date):
         self.index[company_name] = {'last_updated': str(date)}
         with open('snapshots/index.json', 'w') as f:
+            # noinspection PyTypeChecker
             json.dump({'got_data': self.index}, f, indent=4)
+
+
+def data_is_fresh(updated_date):
+    if updated_date is None:
+        return False
+    fresh = updated_date.date() >= datetime.today().date()
+    return fresh
+
 
 class Worker:
     def __init__(self):
@@ -38,13 +50,25 @@ class Worker:
     def make_snapshot(self, company_name):
         # company_name could be pure company of jointg.
         if company_name.startswith('joint'):
-            pass
+            # We need 'fresh' data for each company.
+            # We assume the data is 'fresh' if the last_updated_date more is today,
+            # (even if the time of the day was earlier),
+            # As an option, we can use now()-FRESH_DATA_THRESHOLD.
+            # This setting potentially could be changed, for example, for 1 hour.
+            # to avoid multiple requests that return small amount of data.
+            jointg_companies = self.companies.get_jointg_companies(company_name)
+            # can be in parallel in the real job
+            for company in jointg_companies:
+                last_updated_date = self.index.last_updated_date(company)
+                if not data_is_fresh(last_updated_date):
+                    self.make_snapshot_pure_company(company_name, last_updated_date)
         else:
             self.make_snapshot_pure_company(company_name)
 
-    def make_snapshot_pure_company(self, company_name):
-        last_updated_date = self.index.last_updated_date(company_name)
+    def make_snapshot_pure_company(self, company_name, last_updated_date_cache=None):
+        last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
         new_data = self.db_server.get_data(company_name, last_updated_date)
+        assume_updated_to = datetime.now(timezone.utc) - SERVICE_LAG
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
             max_data_date = new_data.last_updated_date.max()
@@ -54,4 +78,6 @@ class Worker:
                 new_result_data.to_parquet(filename)
             else:
                 new_data.to_parquet(filename)
-            self.index.set_last_updated_date(company_name, max_data_date)
+            self.index.set_last_updated_date(company_name, max(max_data_date, max_data_date))
+        else:
+            self.index.set_last_updated_date(company_name, assume_updated_to)
