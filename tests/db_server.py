@@ -10,7 +10,7 @@ class DBServerEmulator(DBInterface):
         self.database = pd.read_parquet('data.prq')
         self.companies_info = pd.read_parquet('meta.prq')
         # this date will be increased during the test:
-        self.current_date = datetime.datetime(2023, 8, 1)
+        self.current_date = datetime.datetime(2023, 8, 1, hour=12, minute=1)
 
     def increase_date(self, timedelta=None):
         timedelta = timedelta or relativedelta(months=1)

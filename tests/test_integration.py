@@ -1,5 +1,6 @@
 import json
 import glob
+import logging
 import os
 import random
 
@@ -30,3 +31,4 @@ class Test1(TestCase):
                 for company in companies:
                     self.worker.make_snapshot(company)
                 self.worker.db_server.increase_date()
+                logging.debug('--- New date step, nowt time is %s --- ', self.worker.db_server.get_current_date())
