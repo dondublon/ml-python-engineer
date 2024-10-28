@@ -26,6 +26,7 @@ class ReportMaker:
         companies = self.companies_info.get_jointg_companies(jointg_name)
         dfs = [self.get_df_pure_company(company_name) for company_name in companies]
         result_df = pd.concat(dfs, axis=0)
+        result_df['companyName'] = jointg_name
         return result_df
 
     def make_report_by_df(self, data_comp):
