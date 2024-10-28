@@ -85,6 +85,7 @@ class Worker:
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
             max_data_date = new_data.last_updated_date.max().to_pydatetime()
+            max_data_date = max_data_date.replace(tzinfo=timezone.utc)
             if os.path.exists(filename):
                 logging.debug('\tData already exists, concatenating')
                 prev_data = pd.read_parquet(filename)
