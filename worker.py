@@ -1,6 +1,7 @@
-import os
-import json
 from datetime import timedelta, datetime, timezone
+import json
+import logging
+import os
 from typing import Optional
 
 import pandas as pd
@@ -9,6 +10,8 @@ from db_interface import DBInterface
 # It requires additional work to hide this from server, I guess I can skip it.
 from tests.db_server import DBServerEmulator
 from companies import CompaniesManager
+
+logging.basicConfig(level=logging.DEBUG)
 
 #FRESH_DATA_THRESHOLD = timedelta(days=1)
 SERVICE_LAG = timedelta(minutes=1)
@@ -62,21 +65,28 @@ class Worker:
             # to avoid multiple requests that return small amount of data.
             jointg_companies = self.companies.get_jointg_companies(company_name)
             # can be in parallel in the real job
+            logging.debug('Requested data for %s, enumerating %s', company_name, jointg_companies)
             for company in jointg_companies:
                 last_updated_date = self.index.last_updated_date(company)
                 if not data_is_fresh(last_updated_date):
+                    logging.debug('\tData is obsolete for %s, making snapshot...', company)
                     self.make_snapshot_pure_company(company, last_updated_date)
+                else:
+                    logging.debug('\tData is fresh for %s', company)
         else:
             self.make_snapshot_pure_company(company_name)
 
     def make_snapshot_pure_company(self, company_name, last_updated_date_cache=None):
+        logging.debug("Making snapshot for company %s", company_name)
         last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
         new_data = self.db_server.get_data(company_name, last_updated_date)
+        # logging.debug('\tGot new data, %d lines', len(new_data))
         assume_updated_to = now() - SERVICE_LAG
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
             max_data_date = new_data.last_updated_date.max().to_pydatetime()
             if os.path.exists(filename):
+                logging.debug('\tData already exists, concatenating')
                 prev_data = pd.read_parquet(filename)
                 new_result_data = pd.concat([prev_data, new_data], axis=0)
                 new_result_data.to_parquet(filename)
@@ -84,6 +94,7 @@ class Worker:
                 new_data.to_parquet(filename)
             date_to_write = max(max_data_date, assume_updated_to)
         else:
+            logging.debug('\tNo new data, updating timestamp to %s', assume_updated_to)
             date_to_write = assume_updated_to
         date_to_write_str = date_to_write.strftime('%Y-%m-%d %H:%M:%S.%f')
         self.index.set_last_updated_date(company_name, date_to_write_str)
