@@ -17,6 +17,9 @@ class DBServerEmulator(DBInterface):
         self.current_date += timedelta
         pass
 
+    def get_current_date(self):
+        return self.current_date
+
     def get_company_filter(self, company):
         if company[:5] == 'joint':
             company_filter = set(self.companies_info[self.companies_info[company] == 'true'].companyName)
@@ -27,7 +30,10 @@ class DBServerEmulator(DBInterface):
     def get_date_from_filter(self, from_date):
         if not from_date:
             return None
-        date_filter = self.database.last_updated_date > from_date
+        try:
+            date_filter = self.database.last_updated_date > from_date
+        except:
+            date_filter = self.database.last_updated_date > from_date
         return date_filter
 
     def get_date_to_filter(self):

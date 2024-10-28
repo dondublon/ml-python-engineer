@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import timedelta, datetime, timezone
+from typing import Optional
 
 import pandas as pd
 
@@ -33,11 +34,14 @@ class Index:
             # noinspection PyTypeChecker
             json.dump({'got_data': self.index}, f, indent=4)
 
+def now():
+    return datetime.now(timezone.utc)
 
-def data_is_fresh(updated_date):
+def data_is_fresh(updated_date: Optional[str]):
     if updated_date is None:
         return False
-    fresh = updated_date.date() >= datetime.today().date()
+    date_obj = datetime.fromisoformat(updated_date)
+    fresh = date_obj.date() >= now().date()
     return fresh
 
 
@@ -61,23 +65,25 @@ class Worker:
             for company in jointg_companies:
                 last_updated_date = self.index.last_updated_date(company)
                 if not data_is_fresh(last_updated_date):
-                    self.make_snapshot_pure_company(company_name, last_updated_date)
+                    self.make_snapshot_pure_company(company, last_updated_date)
         else:
             self.make_snapshot_pure_company(company_name)
 
     def make_snapshot_pure_company(self, company_name, last_updated_date_cache=None):
         last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
         new_data = self.db_server.get_data(company_name, last_updated_date)
-        assume_updated_to = datetime.now(timezone.utc) - SERVICE_LAG
+        assume_updated_to = now() - SERVICE_LAG
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
-            max_data_date = new_data.last_updated_date.max()
+            max_data_date = new_data.last_updated_date.max().to_pydatetime()
             if os.path.exists(filename):
                 prev_data = pd.read_parquet(filename)
                 new_result_data = pd.concat([prev_data, new_data], axis=0)
                 new_result_data.to_parquet(filename)
             else:
                 new_data.to_parquet(filename)
-            self.index.set_last_updated_date(company_name, max(max_data_date, max_data_date))
+            date_to_write = max(max_data_date, assume_updated_to)
         else:
-            self.index.set_last_updated_date(company_name, assume_updated_to)
+            date_to_write = assume_updated_to
+        date_to_write_str = date_to_write.strftime('%Y-%m-%d %H:%M:%S.%f')
+        self.index.set_last_updated_date(company_name, date_to_write_str)
