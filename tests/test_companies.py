@@ -19,3 +19,8 @@ class TestCompanies(TestCase):
         obj = CompaniesManager(DummyServer())
         actual = obj.get_companies(False)
         self.assertListEqual(actual, ['companyA', 'companyB'])
+
+    def test_get_companies_with_jointgs(self):
+        obj = CompaniesManager(DummyServer())
+        actual = obj.get_companies(True)
+        self.assertListEqual(actual, ['companyA', 'companyB', 'jointg1', 'jointg2'])
