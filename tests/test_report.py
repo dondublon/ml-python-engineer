@@ -72,16 +72,34 @@ jointg3,    2023-01-01,     D,           40,                  10
         obj = self.report_maker()
         actual = obj.make_report_by_df(df)
         expected = data = pd.DataFrame(
-    data=[
-        [1.0, None, 1.0, 4.0, None, 6.0],
-        [None, 1.0, 1.0, None, 10.0, 6.0],
-        [1.0, 2.0, None, 2.0, 2.0, None]
-    ],
-    columns=pd.MultiIndex.from_product([['volume', 'median_rate'], ['2023-01', '2024-01', '2025-01']]),
-    index=pd.MultiIndex.from_tuples([
-        ('jointg3', 'D'),
-        ('jointg3', 'N'),
-        ('jointg3', 'R')
-    ], names=['companyName', 'transport_type'])
-)
+            data=[
+                [1.0, None, 1.0, 4.0, None, 6.0],
+                [None, 1.0, 1.0, None, 10.0, 6.0],
+                [1.0, 2.0, None, 2.0, 2.0, None]
+            ],
+            columns=pd.MultiIndex.from_product([['volume', 'median_rate'], ['2023-01', '2024-01', '2025-01']]),
+            index=pd.MultiIndex.from_tuples([
+                ('jointg3', 'D'),
+                ('jointg3', 'N'),
+                ('jointg3', 'R')
+            ], names=['companyName', 'transport_type'])
+        )
         assert_frame_equal(actual, expected)
+
+    def test_make_report_by_list(self):
+        def get_df(self_, company_name):
+            df = pd.DataFrame({
+                'companyName': company_name,
+                'values': [1,2,3]
+            })
+            return df
+        expected = pd.DataFrame({
+            'companyName': ['companyA'] * 3 + ['companyB'] * 3,
+            'values': [1,2,3] * 2,
+
+        }, index=[0, 1, 2] * 2)
+        with patch('report.ReportMaker.make_report', get_df) as mock_make_report:
+            obj = self.report_maker()
+            actual = obj.make_report_by_list(['companyA', 'companyB'])
+            print(actual)
+            assert_frame_equal(actual, expected)
