@@ -8,7 +8,7 @@ class CompaniesManager:
             jointgs = [name for name in self.data.columns.to_list() if name.startswith('joint')]
             companies = list(companies_only) + jointgs
         else:
-            companies = companies_only
+            companies = companies_only.to_list()
         return companies
 
     def get_jointg_companies(self, jointg_name):
