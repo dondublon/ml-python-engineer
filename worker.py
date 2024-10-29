@@ -13,8 +13,6 @@ from companies import CompaniesManager
 
 logging.basicConfig(level=logging.DEBUG)
 
-#FRESH_DATA_THRESHOLD = timedelta(days=1)
-SERVICE_LAG = timedelta(minutes=1)
 
 def get_db_server() -> DBInterface:
     db_server = DBServerEmulator()
@@ -81,7 +79,6 @@ class Worker:
         last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
         new_data = self.db_server.get_data(company_name, last_updated_date)
         # logging.debug('\tGot new data, %d lines', len(new_data))
-        assume_updated_to = now() - SERVICE_LAG
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
             max_data_date = new_data.last_updated_date.max().to_pydatetime()
@@ -90,12 +87,11 @@ class Worker:
                 logging.debug('\tData already exists, concatenating')
                 prev_data = pd.read_parquet(filename)
                 new_result_data = pd.concat([prev_data, new_data], axis=0)
+                # Some records might be updated:
+                new_result_data.drop_duplicates(subset='id', keep='last')
                 new_result_data.to_parquet(filename)
             else:
                 new_data.to_parquet(filename)
-            date_to_write = max(max_data_date, assume_updated_to)
-        else:
-            logging.debug('\tNo new data, updating timestamp to %s', assume_updated_to)
-            date_to_write = assume_updated_to
-        date_to_write_str = date_to_write.strftime('%Y-%m-%d %H:%M:%S.%f')
-        self.index.set_last_updated_date(company_name, date_to_write_str)
+            date_to_write = max_data_date
+            date_to_write_str = date_to_write.strftime('%Y-%m-%d %H:%M:%S.%f')
+            self.index.set_last_updated_date(company_name, date_to_write_str)
