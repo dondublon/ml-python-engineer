@@ -5,6 +5,19 @@ LOWER_BORDER = '2024-01-01'
 UPPER_BORDER = '2024-05-20'
 
 
+
+def gregorian_year_week(date):
+    # Get the year and day of the year
+    year = date.year
+    day_of_year = date.timetuple().tm_yday
+
+    # Calculate the week number in the Gregorian calendar, starting with week 1
+    week = (day_of_year - 1) // 7 + 1
+
+    # Return the formatted year-week string
+    return f"{year}-{str(week).zfill(2)}"
+
+
 class ReportMaker:
     def __init__(self, companies_manager):
         self.companies_info = companies_manager
@@ -30,8 +43,7 @@ class ReportMaker:
         return result_df
 
     def make_report_by_df(self, data_comp):
-        data_comp['year_week'] = data_comp['pickup_date'].dt.year.astype(str) + '-' + data_comp[
-            'pickup_date'].dt.isocalendar().week.astype(str).str.zfill(2)
+        data_comp['year_week'] = data_comp['pickup_date'].apply(gregorian_year_week)
         pickup_count_table = data_comp.pivot_table(
             index=['companyName', 'transport_type'],
             columns='year_week',
