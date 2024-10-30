@@ -1,10 +1,11 @@
 import json
 import os
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
-from worker import Index
-
+from tests.dummy_server import DummyServer
+from worker import Index, data_is_fresh, Worker
 
 TEST_INDEX_FILE = 'test_index.json'
 
@@ -31,3 +32,34 @@ class TestIndex(TestCase):
         index_obj = Index()
         got_date = index_obj.last_updated_date('companyB')
         self.assertIsNone(got_date)
+
+
+class TestDataIsFresh(TestCase):
+    def test_data_is_fresh_none(self):
+        result = data_is_fresh(None)
+        self.assertFalse(result)
+
+    def test_data_is_fresh_true(self):
+        with patch('worker.now', return_value=datetime.fromisoformat('2024-10-25 12:00:00')):
+            result = data_is_fresh('2024-10-25 11:00:00')
+            self.assertTrue(result)
+
+    def test_data_is_fresh_false(self):
+        with patch('worker.now', return_value=datetime.fromisoformat('2024-10-25 12:00:00')):
+            result = data_is_fresh('2024-10-24 11:00:00')
+            self.assertFalse(result)
+
+
+@patch('worker.get_db_server', return_value=DummyServer())
+@patch('worker.INDEX_FILE_NAME', TEST_INDEX_FILE)
+class TestMakeSnapshot(TestCase):
+    def setUp(self):
+        with open(TEST_INDEX_FILE, 'w') as f:
+            # noinspection PyTypeChecker
+            json.dump({"got_data": {}}, f)
+    def tearDown(self):
+        os.remove(TEST_INDEX_FILE)
+
+    def test_pure_company(self, g):
+        with patch('worker.Worker.make_snapshot_pure_company') as mock_make_snapshot_pure_company:
+            obj = Worker()

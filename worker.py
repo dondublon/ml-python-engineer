@@ -86,6 +86,7 @@ class Worker:
         last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
         new_data = self.db_server.get_data(company_name, last_updated_date)
         # logging.debug('\tGot new data, %d lines', len(new_data))
+        # We need 'now' to define if data is fresh, for jointg.
         assume_updated_to = now() - SERVICE_LAG
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
