@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import logging
 import os
@@ -19,6 +19,8 @@ def get_db_server() -> DBInterface:
     return db_server
 
 INDEX_FILE_NAME = 'snapshots/index.json'
+SERVICE_LAG = timedelta(minutes=1)
+
 
 class Index:
     # In real job, could be implemented by Redis.
@@ -41,6 +43,9 @@ def now():
     return datetime.now(timezone.utc)
 
 def data_is_fresh(updated_date: Optional[str]):
+    """In this function, we assume the data is fresh if it is today.
+    Another option - to
+    """
     if updated_date is None:
         return False
     date_obj = datetime.fromisoformat(updated_date)
@@ -81,6 +86,7 @@ class Worker:
         last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
         new_data = self.db_server.get_data(company_name, last_updated_date)
         # logging.debug('\tGot new data, %d lines', len(new_data))
+        assume_updated_to = now() - SERVICE_LAG
         if not new_data.empty:
             filename = f'snapshots/{company_name}.prq'
             max_data_date = new_data.last_updated_date.max().to_pydatetime()
@@ -94,6 +100,11 @@ class Worker:
                 new_result_data.to_parquet(filename)
             else:
                 new_data.to_parquet(filename)
-            date_to_write = max_data_date
-            date_to_write_str = date_to_write.strftime('%Y-%m-%d %H:%M:%S.%f')
-            self.index.set_last_updated_date(company_name, date_to_write_str)
+            date_to_write = max(max_data_date, assume_updated_to)
+        else:
+            logging.debug('\tNo new data, updating timestamp to %s', assume_updated_to)
+            date_to_write = assume_updated_to
+        date_to_write_str = date_to_write.strftime('%Y-%m-%d %H:%M:%S.%f')
+        self.index.set_last_updated_date(company_name, date_to_write_str)
+
+
