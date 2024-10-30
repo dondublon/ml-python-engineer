@@ -64,10 +64,6 @@ jointg3,    2023-01-01,D,               40,                  10
 jointg3,    2024-01-01,N,               50,                  5
 jointg3,    2025-01-01,N,               60,                  10
         """
-        data1 = """
-companyName,pickup_date,transport_type,total_linehaul_cost,miles
-jointg3,    2023-01-01,     D,           40,                  10
-                """
         df = pd.read_csv(io.StringIO(data), parse_dates=['pickup_date'])
         obj = self.report_maker()
         actual = obj.make_report_by_df(df)

@@ -1,8 +1,12 @@
 import json
 import os
+import io
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import patch, call
+from unittest.mock import patch, call, MagicMock
+
+import pandas as pd
+from pandas._testing import assert_frame_equal
 
 from tests.dummy_server import DummyServer
 from worker import Index, data_is_fresh, Worker
@@ -57,6 +61,7 @@ class TestMakeSnapshot(TestCase):
         with open(TEST_INDEX_FILE, 'w') as f:
             # noinspection PyTypeChecker
             json.dump({"got_data": {}}, f)
+
     def tearDown(self):
         os.remove(TEST_INDEX_FILE)
 
@@ -83,3 +88,64 @@ class TestMakeSnapshot(TestCase):
             obj = Worker()
             obj.make_snapshot('jointg3')
             mock_make_snapshot_pure_company.assert_not_called()
+
+
+@patch('worker.get_db_server', return_value=DummyServer())
+@patch('worker.INDEX_FILE_NAME', TEST_INDEX_FILE)
+class TestMakeSnapshotPureCompany(TestCase):
+    def setUp(self):
+        with open(TEST_INDEX_FILE, 'w') as f:
+            # noinspection PyTypeChecker
+            json.dump({"got_data": {}}, f)
+
+    def tearDown(self):
+        os.remove(TEST_INDEX_FILE)
+
+    def test_not_empty__old_exists(self, get_server):
+        old_data = """
+id,value,last_updated_date
+1,  10,2024-01-01
+2,  20,2024-01-02
+                """
+        old_data = pd.read_csv(io.StringIO(old_data), parse_dates=['last_updated_date'])
+        new_data = """
+id,value,last_updated_date
+1,  10,2024-01-01
+3,  30,2024-01-03
+"""
+        new_data = pd.read_csv(io.StringIO(new_data), parse_dates=['last_updated_date'])
+        def mock_to_parquet(df, filename):
+            expected = pd.DataFrame({
+                'id': [2, 1, 3],
+                'value': [20, 10, 30],
+                'last_updated_date': pd.to_datetime(['2024-01-02', '2024-01-01', '2024-01-03'])
+            }, index=[1, 0, 1])
+            assert_frame_equal(df, expected)
+        with patch('worker.Worker.get_snapshot_name', lambda self, company_name: f'test_{company_name}.prq'), \
+             patch('pandas.read_parquet', return_value=old_data), \
+             patch('pandas.DataFrame.to_parquet', mock_to_parquet), \
+             patch('os.path.exists', return_value=True):
+            obj = Worker()
+            obj.db_server.get_data = MagicMock(return_value=new_data)
+            obj.make_snapshot_pure_company('companyA')
+
+    def test_not_empty__old_not_exists(self, get_server):
+        new_data = """
+id,value,last_updated_date
+1,  10,2024-01-01
+3,  30,2024-01-03
+"""
+        new_data = pd.read_csv(io.StringIO(new_data), parse_dates=['last_updated_date'])
+        def mock_to_parquet(df, filename):
+            expected = pd.DataFrame({
+                'id': [1, 3],
+                'value': [10, 30],
+                'last_updated_date': pd.to_datetime(['2024-01-01', '2024-01-03'])
+            })
+            assert_frame_equal(df, expected)
+        with patch('worker.Worker.get_snapshot_name', lambda self, company_name: f'test_{company_name}.prq'), \
+             patch('pandas.DataFrame.to_parquet', mock_to_parquet), \
+             patch('os.path.exists', return_value=False):
+            obj = Worker()
+            obj.db_server.get_data = MagicMock(return_value=new_data)
+            obj.make_snapshot_pure_company('companyA')
