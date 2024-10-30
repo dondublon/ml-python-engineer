@@ -1,4 +1,6 @@
 import datetime
+from datetime import timezone
+
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 
@@ -8,9 +10,12 @@ from db_interface import DBInterface
 class DBServerEmulator(DBInterface):
     def __init__(self):
         self.database = pd.read_parquet('data.prq')
+        self.database['pickup_date'] = self.database['pickup_date'].dt.tz_localize('UTC')
+        self.database['last_updated_date'] = self.database['last_updated_date'].dt.tz_localize('UTC')
+        self.database['created_date'] = self.database['created_date'].dt.tz_localize('UTC')
         self.companies_info = pd.read_parquet('meta.prq')
         # this date will be increased during the test:
-        self.current_date = datetime.datetime(2023, 8, 1, hour=12, minute=1)
+        self.current_date = datetime.datetime(2023, 8, 1, hour=12, minute=1, tzinfo=timezone.utc)
 
     def increase_date(self, timedelta=None):
         timedelta = timedelta or relativedelta(months=1)
