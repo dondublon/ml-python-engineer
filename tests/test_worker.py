@@ -2,7 +2,6 @@ import json
 import os
 import io
 from datetime import datetime, timezone
-from multiprocessing.pool import worker
 from unittest import TestCase
 from unittest.mock import patch, call, MagicMock
 
@@ -159,4 +158,15 @@ id,value,last_updated_date
             obj = Worker()
             obj.db_server.get_data = MagicMock(return_value=new_data)
             obj.make_snapshot_pure_company('companyA')
+            mock_set_last_updated_date.assert_called_once_with('companyA', '2024-10-30 00:00:00.000000')
+
+    def test_empty(self, get_server):
+        now = datetime(2024, 10, 30, tzinfo=timezone.utc) + SERVICE_LAG
+        with patch('pandas.DataFrame.to_parquet') as mock_to_parquet, \
+             patch('worker.now', return_value=now), \
+             patch('worker.Index.set_last_updated_date') as mock_set_last_updated_date:
+            obj = Worker()
+            obj.db_server.get_data = MagicMock(return_value=pd.DataFrame())
+            obj.make_snapshot('companyA')
+            mock_to_parquet.assert_not_called()
             mock_set_last_updated_date.assert_called_once_with('companyA', '2024-10-30 00:00:00.000000')
