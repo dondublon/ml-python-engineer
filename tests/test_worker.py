@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 from tests.dummy_server import DummyServer
 from worker import Index, data_is_fresh, Worker
@@ -60,8 +60,26 @@ class TestMakeSnapshot(TestCase):
     def tearDown(self):
         os.remove(TEST_INDEX_FILE)
 
-    def test_pure_company(self, g):
+    def test_pure_company(self, get_server):
         with patch('worker.Worker.make_snapshot_pure_company') as mock_make_snapshot_pure_company:
             obj = Worker()
             obj.make_snapshot('companyA')
             mock_make_snapshot_pure_company.assert_called_once_with('companyA')
+
+    @patch('worker.data_is_fresh', return_value=False)
+    def test_jointg_data_obsolette(self, get_server, data_is_fresh):
+        with patch('worker.Worker.make_snapshot_pure_company') as mock_make_snapshot_pure_company:
+            obj = Worker()
+            obj.make_snapshot('jointg3')
+            mock_make_snapshot_pure_company.call_count = 2
+            self.assertListEqual(mock_make_snapshot_pure_company.call_args_list, [
+                call('companyA', None),
+                call('companyC', None),
+            ])
+
+    @patch('worker.data_is_fresh', return_value=True)
+    def test_jointg_data_fresh(self, get_server, data_is_fresh):
+        with patch('worker.Worker.make_snapshot_pure_company') as mock_make_snapshot_pure_company:
+            obj = Worker()
+            obj.make_snapshot('jointg3')
+            mock_make_snapshot_pure_company.assert_not_called()
