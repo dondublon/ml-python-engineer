@@ -6,7 +6,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from companies import CompaniesManager
-from report import ReportMaker
+from report import ReportMaker, gregorian_year_week
 from tests.dummy_server import DummyServer
 
 
@@ -103,3 +103,15 @@ jointg3,    2023-01-01,     D,           40,                  10
             actual = obj.make_report_by_list(['companyA', 'companyB'])
             print(actual)
             assert_frame_equal(actual, expected)
+
+class TestOther(TestCase):
+    def test_gregorian_year_week(self):
+        cases = [
+            ('2023-12-31', '2023-53'),
+            ('2024-01-01', '2024-01'),
+            ('2024-01-07', '2024-01'),
+            ('2024-01-08', '2024-02'),
+        ]
+        for in_date, expected in cases:
+            actual = gregorian_year_week(pd.Timestamp(in_date))
+            self.assertEqual(actual, expected)
