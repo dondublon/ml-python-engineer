@@ -63,3 +63,5 @@ class TestMakeSnapshot(TestCase):
     def test_pure_company(self, g):
         with patch('worker.Worker.make_snapshot_pure_company') as mock_make_snapshot_pure_company:
             obj = Worker()
+            obj.make_snapshot('companyA')
+            mock_make_snapshot_pure_company.assert_called_once_with('companyA')
