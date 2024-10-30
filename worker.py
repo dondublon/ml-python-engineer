@@ -18,10 +18,12 @@ def get_db_server() -> DBInterface:
     db_server = DBServerEmulator()
     return db_server
 
+INDEX_FILE_NAME = 'snapshots/index.json'
+
 class Index:
     # In real job, could be implemented by Redis.
     def __init__(self):
-        with open('snapshots/index.json') as f_index:
+        with open(INDEX_FILE_NAME) as f_index:
             index0 = json.load(f_index)
             self.index = index0['got_data']
 
@@ -31,7 +33,7 @@ class Index:
 
     def set_last_updated_date(self, company_name, date):
         self.index[company_name] = {'last_updated': str(date)}
-        with open('snapshots/index.json', 'w') as f:
+        with open(INDEX_FILE_NAME, 'w') as f:
             # noinspection PyTypeChecker
             json.dump({'got_data': self.index}, f, indent=4)
 
