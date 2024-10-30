@@ -81,6 +81,10 @@ class Worker:
         else:
             self.make_snapshot_pure_company(company_name)
 
+    def get_snapshot_name(self, company_name):
+        filename = f'snapshots/{company_name}.prq'
+        return filename
+
     def make_snapshot_pure_company(self, company_name, last_updated_date_cache=None):
         logging.debug("Making snapshot for company %s", company_name)
         last_updated_date = last_updated_date_cache or self.index.last_updated_date(company_name)
@@ -89,7 +93,7 @@ class Worker:
         # We need 'now' to define if data is fresh, for jointg.
         assume_updated_to = now() - SERVICE_LAG
         if not new_data.empty:
-            filename = f'snapshots/{company_name}.prq'
+            filename = self.get_snapshot_name(company_name)
             max_data_date = new_data.last_updated_date.max().to_pydatetime()
             max_data_date = max_data_date.replace(tzinfo=timezone.utc)
             if os.path.exists(filename):
@@ -97,7 +101,7 @@ class Worker:
                 prev_data = pd.read_parquet(filename)
                 new_result_data = pd.concat([prev_data, new_data], axis=0)
                 # Some records might be updated:
-                new_result_data.drop_duplicates(subset='id', keep='last')
+                new_result_data = new_result_data.drop_duplicates(subset='id', keep='last')
                 new_result_data.to_parquet(filename)
             else:
                 new_data.to_parquet(filename)
