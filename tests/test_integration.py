@@ -76,7 +76,8 @@ class TestReport(TestCommon):
             self.worker.make_snapshot(company)
         report_maker = report.ReportMaker(self.worker.companies)
         # Pure companies:
-        companies = ['bawutedhpu', 'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe']
+        companies = ['bawutedhpu', 'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe',
+                     'jointgs7', 'jointGS', 'jointgs14', 'jointgs10']
                      #'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
                      #'vypsclbgdn', 'zmqigygwhu']
         def get_company_condition(company_name):
