@@ -3,12 +3,13 @@ import glob
 import logging
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 
 from unittest import TestCase
 from unittest.mock import patch
 
 import pandas as pd
+from nbclient.client import timestamp
 from pandas._testing import assert_frame_equal
 
 import worker
@@ -62,10 +63,11 @@ class TestReport(TestCommon):
     def setUp(self):
         self.reset_index()
         self.worker = worker.Worker()
+        pass
 
     def test_report(self):
         companies = self.worker.companies.get_companies(include_jointgs=False)
-        self.worker.db_server.current_date = datetime(2024, 6, 1)
+        self.worker.db_server.current_date = datetime(2024, 6, 1, tzinfo=timezone.utc)
         # week index: database.pickup_date.dt.year.astype(str) + '-' + database.pickup_date.dt.isocalendar().week.astype(str)
         for company in companies:
             self.worker.make_snapshot(company)
