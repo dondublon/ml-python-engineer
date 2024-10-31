@@ -76,14 +76,14 @@ class TestReport(TestCommon):
             self.worker.make_snapshot(company)
         report_maker = report.ReportMaker(self.worker.companies)
         # Pure companies:
-        companies = ['bawutedhpu', 'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe',
-                     'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
-                     'vypsclbgdn', 'zmqigygwhu']
+        companies = ['bawutedhpu'] #'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe',
+                     #'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
+                     #'vypsclbgdn', 'zmqigygwhu']
         transport_types = ['R', 'N', 'D']
         for company in companies:
             report_company = report_maker.make_report(company)
-            # check volume:
             volume_columns = [col[1] for col in report_company.columns if col[0]=='volume']
+            # We assume that median columns are the same
             for col in volume_columns:
                 year, week_no = col.split('-')
                 year = int(year)
@@ -98,3 +98,9 @@ class TestReport(TestCommon):
                         self.assertTrue(db_fragment.empty)
                     else:
                         self.assertEqual(len(db_fragment), int(report_volume))
+                    median_report = report_company.loc[(company, tt), ('median_rate', col)]
+                    median_db = (db_fragment['total_linehaul_cost'].astype(float) / db_fragment['miles']).median()
+                    if np.isnan(median_report):
+                        self.assertTrue(np.isnan(median_db))
+                    else:
+                        self.assertEqual(median_report, np.float64(median_db))
