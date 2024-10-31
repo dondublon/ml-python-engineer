@@ -8,6 +8,8 @@ from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
+import pandas as pd
+
 import worker
 
 
@@ -22,27 +24,37 @@ class TestCommon(TestCase):
 
 class TestTimeSteps(TestCommon):
     def setUp(self):
-        self.worker = worker.Worker()
         self.reset_index()
+        self.worker = worker.Worker()
 
     def tearDown(self):
         return
 
 
     def test_time_steps(self):
-        companies = ['ktkzxrffnd', 'grnescfhiv', 'bsjhgjllri', 'jointgs7']
+        companies_pure = ['ktkzxrffnd', 'grnescfhiv', 'bsjhgjllri']
+        companies = companies_pure + ['jointgs7']
         with patch('worker.now', self.worker.db_server.get_current_date):
             for date_step in range(12):  # 12 - to cover steps from 2023-03 to 2024-05
                 for company in companies:
                     self.worker.make_snapshot(company)
                 self.worker.db_server.increase_date()
                 logging.debug('--- New date step, nowt time is %s --- ', self.worker.db_server.get_current_date())
+        # Assertions
+        database0 = pd.read_parquet('data.prq')
+        companies_for_jointg = self.worker.companies.get_jointg_companies('jointgs7')
+        assert 'iwqnohooyt' in companies_for_jointg
+        for company in companies_for_jointg:
+            print('Checking company ', company)
+            data_in_db = database0[database0.companyName==company]
+            snapshot = pd.read_parquet(f'snapshots/{company}.prq')
+            self.assertEqual(len(data_in_db), len(snapshot))
 
 
 class TestReport(TestCommon):
     def setUp(self):
-        self.worker = worker.Worker()
         self.reset_index()
+        self.worker = worker.Worker()
 
     def test_report(self):
         companies = self.worker.companies.get_companies(include_jointgs=False)
