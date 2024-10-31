@@ -8,11 +8,12 @@ from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
-from nbclient.client import timestamp
 from pandas._testing import assert_frame_equal
 
 import worker
+import report
 
 
 random.seed(123)
@@ -63,11 +64,37 @@ class TestReport(TestCommon):
     def setUp(self):
         self.reset_index()
         self.worker = worker.Worker()
+        self.worker.db_server.database['year_week'] = self.worker.db_server.database['pickup_date'].apply(report.gregorian_year_week)
         pass
 
     def test_report(self):
         companies = self.worker.companies.get_companies(include_jointgs=False)
+        database0 = self.worker.db_server.database
         self.worker.db_server.current_date = datetime(2024, 6, 1, tzinfo=timezone.utc)
         # week index: database.pickup_date.dt.year.astype(str) + '-' + database.pickup_date.dt.isocalendar().week.astype(str)
         for company in companies:
             self.worker.make_snapshot(company)
+        report_maker = report.ReportMaker(self.worker.companies)
+        # Pure companies:
+        companies = ['bawutedhpu', 'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe',
+                     'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
+                     'vypsclbgdn', 'zmqigygwhu']
+        transport_types = ['R', 'N', 'D']
+        for company in companies:
+            report_company = report_maker.make_report(company)
+            # check volume:
+            volume_columns = [col[1] for col in report_company.columns if col[0]=='volume']
+            for col in volume_columns:
+                year, week_no = col.split('-')
+                year = int(year)
+                for tt in transport_types:
+                    db_fragment = database0[(database0.companyName==company) &
+                                            (database0.transport_type==tt) &
+                                            (database0.year_week == col) &
+                                            (database0.pickup_date.dt.year == year)
+                                            ]
+                    report_volume = report_company.loc[(company, tt), ('volume', col)]
+                    if np.isnan(report_volume):
+                        self.assertTrue(db_fragment.empty)
+                    else:
+                        self.assertEqual(len(db_fragment), int(report_volume))
