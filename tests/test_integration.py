@@ -76,19 +76,28 @@ class TestReport(TestCommon):
             self.worker.make_snapshot(company)
         report_maker = report.ReportMaker(self.worker.companies)
         # Pure companies:
-        companies = ['bawutedhpu'] #'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe',
+        companies = ['bawutedhpu', 'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe']
                      #'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
                      #'vypsclbgdn', 'zmqigygwhu']
+        def get_company_condition(company_name):
+            if company_name.startswith('joint'):
+                joingt_companies = self.worker.companies.get_jointg_companies(company_name)
+                condition = database0.companyName.isin(joingt_companies)
+            else:
+                condition = database0.companyName==company
+            return condition
+
         transport_types = ['R', 'N', 'D']
         for company in companies:
             report_company = report_maker.make_report(company)
+            company_condition = get_company_condition(company)
             volume_columns = [col[1] for col in report_company.columns if col[0]=='volume']
             # We assume that median columns are the same
             for col in volume_columns:
                 year, week_no = col.split('-')
                 year = int(year)
                 for tt in transport_types:
-                    db_fragment = database0[(database0.companyName==company) &
+                    db_fragment = database0[company_condition &
                                             (database0.transport_type==tt) &
                                             (database0.year_week == col) &
                                             (database0.pickup_date.dt.year == year)
