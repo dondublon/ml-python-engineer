@@ -9,6 +9,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import pandas as pd
+from pandas._testing import assert_frame_equal
 
 import worker
 
@@ -42,6 +43,9 @@ class TestTimeSteps(TestCommon):
                 logging.debug('--- New date step, nowt time is %s --- ', self.worker.db_server.get_current_date())
         # Assertions
         database0 = pd.read_parquet('data.prq')
+        database0['pickup_date'] = database0['pickup_date'].dt.tz_localize('UTC')
+        database0['last_updated_date'] = database0['last_updated_date'].dt.tz_localize('UTC')
+        database0['created_date'] = database0['created_date'].dt.tz_localize('UTC')
         companies_for_jointg = self.worker.companies.get_jointg_companies('jointgs7')
         assert 'iwqnohooyt' in companies_for_jointg
         for company in companies_for_jointg:
@@ -49,6 +53,9 @@ class TestTimeSteps(TestCommon):
             data_in_db = database0[database0.companyName==company]
             snapshot = pd.read_parquet(f'snapshots/{company}.prq')
             self.assertEqual(len(data_in_db), len(snapshot))
+            assert_frame_equal(data_in_db.sort_values(by='id').reset_index(drop=True),
+                               snapshot.sort_values(by='id').reset_index(drop=True),
+                               check_exact=True)
 
 
 class TestReport(TestCommon):
