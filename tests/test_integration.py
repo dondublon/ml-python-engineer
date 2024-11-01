@@ -3,6 +3,7 @@ import glob
 import logging
 import os
 import random
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from unittest import TestCase
@@ -12,8 +13,10 @@ import numpy as np
 import pandas as pd
 from pandas._testing import assert_frame_equal
 
+from tests.call_logger import MethodCallLogger
 import worker
 import report
+
 
 
 random.seed(123)
@@ -37,6 +40,7 @@ class TestTimeSteps(TestCommon):
     def test_time_steps(self):
         companies_pure = ['ktkzxrffnd', 'grnescfhiv', 'bsjhgjllri']
         companies = companies_pure + ['jointgs7']
+        self.worker.make_snapshot_pure_company = MethodCallLogger(self.worker.make_snapshot_pure_company)
         with patch('worker.now', self.worker.db_server.get_current_date):
             for date_step in range(12):  # 12 - to cover steps from 2023-03 to 2024-05
                 for company in companies:
@@ -58,6 +62,15 @@ class TestTimeSteps(TestCommon):
             assert_frame_equal(data_in_db.sort_values(by='id').reset_index(drop=True),
                                snapshot.sort_values(by='id').reset_index(drop=True),
                                check_exact=True)
+        # Left check self.worker.make_snapshot_pure_company
+        method = self.worker.make_snapshot_pure_company
+        self.assertEqual(len(method.call_args_list), 4*12)  # 4=companies for joint7
+        calls_by_company = defaultdict(list)
+        for call in method.call_args_list:
+            calls_by_company[call[0][0]].append(call[0][1] if len(call[0])>1 else None)
+        for company in companies_pure:
+            self.assertEqual(calls_by_company[company], [None] * 12)
+        self.assertEqual(calls_by_company['iwqnohooyt'], [None, '2023-08-01 12:00:00.000000', '2023-09-01 12:00:00.000000', '2023-10-01 12:00:00.000000', '2023-11-01 12:00:00.000000', '2023-12-01 12:00:00.000000', '2024-01-01 12:00:00.000000', '2024-02-01 12:00:00.000000', '2024-03-01 12:00:00.000000', '2024-04-01 12:00:00.000000', '2024-05-01 12:00:00.000000', '2024-06-01 12:00:00.000000'])
 
 
 class TestReport(TestCommon):
@@ -71,15 +84,14 @@ class TestReport(TestCommon):
         companies = self.worker.companies.get_companies(include_jointgs=False)
         database0 = self.worker.db_server.database
         self.worker.db_server.current_date = datetime(2024, 6, 1, tzinfo=timezone.utc)
-        # week index: database.pickup_date.dt.year.astype(str) + '-' + database.pickup_date.dt.isocalendar().week.astype(str)
         for company in companies:
             self.worker.make_snapshot(company)
         report_maker = report.ReportMaker(self.worker.companies)
         # Pure companies:
         companies = ['bawutedhpu', 'bwiwxhznom', 'dbijifujtu', 'gvdpftceua', 'hxgbojleqe',
-                     'jointgs7', 'jointGS', 'jointgs14', 'jointgs10']
-                     #'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
-                     #'vypsclbgdn', 'zmqigygwhu']
+                     'jointgs7', 'jointGS', 'jointgs14', 'jointgs10',
+                     'kfpeljbvly', 'mekaofdvfc', 'nxnnpaland', 'rleyktmksb', 'ubhqnnewtx',
+                     'vypsclbgdn', 'zmqigygwhu']
         def get_company_condition(company_name):
             if company_name.startswith('joint'):
                 joingt_companies = self.worker.companies.get_jointg_companies(company_name)
